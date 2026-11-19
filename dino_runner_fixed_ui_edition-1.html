@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Dino Runner - Worlds Edition</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,Arial;background:#14263a;color:#20334a;touch-action:none}canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hud{position:fixed;top:max(10px,env(safe-area-inset-top));left:10px;right:10px;display:none;justify-content:space-between;gap:8px;pointer-events:none;font-weight:1000;color:#18314a;z-index:5}.pill{background:linear-gradient(145deg,#fffffffa,#dcecffed);border:2px solid #fff;border-radius:16px;padding:9px 12px;font-size:12px;line-height:1.55;box-shadow:0 5px 18px #07192d55}.scorePill{text-align:right;min-width:98px}#progressTrack{display:none;position:fixed;top:88px;left:12px;right:12px;height:7px;border-radius:20px;background:#ffffff55;overflow:hidden;z-index:5;box-shadow:0 1px 5px #0003}#progressFill{height:100%;width:0;background:linear-gradient(90deg,#38e2a0,#ffe15b);border-radius:20px;transition:width .12s linear}
+#jump{display:none;position:fixed;right:18px;bottom:max(25px,env(safe-area-inset-bottom));width:124px;height:88px;border:2px solid #ffe5a4;border-radius:24px;background:linear-gradient(145deg,#ffd45b,#ff9e19);color:#382400;font-size:23px;font-weight:1000;box-shadow:0 7px 0 #b96d12,0 12px 24px #07192d66;z-index:6;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1px}#jump small{font-size:9px;letter-spacing:1px;opacity:.72}#jump:active{transform:translateY(4px);box-shadow:0 3px 0 #b96d12}
+#pause{display:none;position:fixed;top:112px;right:10px;border:1px solid #ffffffaa;border-radius:14px;padding:10px 14px;background:linear-gradient(145deg,#ffffff,#dcecff);color:#234;font-weight:1000;box-shadow:0 4px 12px #07192d44;z-index:6}
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;background:#122b4566}.panel{width:min(94vw,540px);max-height:92vh;overflow:auto;background:linear-gradient(150deg,#ffffff,#eaf4ff);border:3px solid #fff;border-radius:27px;padding:20px;box-shadow:0 18px 55px #06182b99;text-align:center}
+h1{margin:0 0 5px;font-size:29px;color:#19334c}h2{margin:4px 0 10px;font-size:20px}.sub{color:#60758a;font-size:12px;margin:4px 0 12px}
+.stats{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:9px 0}.stat{background:#eaf3fa;border-radius:12px;padding:8px 11px;font-weight:900;font-size:12px}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:11px}button{font:inherit;cursor:pointer;touch-action:manipulation}.main{border:0;border-radius:15px;background:linear-gradient(135deg,#23c783,#138c5b);color:#fff;font-size:18px;font-weight:1000;padding:13px 25px;box-shadow:0 5px 0 #0b6842,0 8px 18px #0b684233}.secondary{border:1px solid #d5e4f0;border-radius:13px;background:linear-gradient(145deg,#f5faff,#dceaf5);color:#20364a;font-weight:950;padding:11px 16px;box-shadow:0 3px 0 #c1d3e2}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.item{border:2px solid #dce8f1;background:#fff;border-radius:14px;padding:9px}.item .emoji{font-size:28px}.item b{display:block;font-size:13px}.item small{display:block;color:#64798c;min-height:30px;font-size:11px;margin:3px 0 7px}.item button{border:0;border-radius:9px;background:#277ac1;color:#fff;font-weight:900;padding:7px 9px}.item button:disabled{background:#8597a5}
+.tabs{display:flex;gap:5px;overflow:auto;padding:4px 0;margin:7px 0}.tab{border:0;border-radius:10px;background:#e5edf4;padding:8px 10px;font-weight:900;white-space:nowrap}.tab.active{background:#263e5a;color:white}
+.diff{border:2px solid #dce8f1;background:white;border-radius:13px;padding:10px;margin:6px 0;text-align:left}.diff input{accent-color:#20a76b;margin-right:8px}.diff small{display:block;color:#667b8e;margin-left:24px}
+#toast{position:fixed;left:50%;top:16%;transform:translateX(-50%);background:#172f49;color:white;padding:10px 14px;border-radius:13px;font-weight:900;display:none;z-index:20;box-shadow:0 5px 18px #0005}
+#comboPop{position:fixed;top:28%;left:50%;transform:translate(-50%,-50%) scale(.7);font-size:clamp(25px,8vw,44px);font-weight:1000;color:#ffcf39;text-shadow:0 3px 0 #9a4e00,0 5px 15px #0008;opacity:0;pointer-events:none}
+#comboPop.show{animation:pop .7s ease-out}@keyframes pop{0%{opacity:0;transform:translate(-50%,-25%) scale(.6)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-90%) scale(1)}}
+@media(max-width:380px){h1{font-size:25px}.panel{padding:13px}#jump{width:112px;height:80px;right:13px}#hud .pill{padding:7px 9px;font-size:11px}#progressTrack{top:83px}}
+</style></head><body>
+<canvas id="game"></canvas>
+<div id="hud"><div class="pill"><div>🪙 <span id="runCoins">0</span> &nbsp; 🔥 <span id="combo">0</span>x</div><div>LEVEL <span id="level">1</span> · <span id="worldHud">WORLD</span></div><div>🛡️ <span id="shieldHud">OFF</span></div></div><div class="pill scorePill"><div>SCORE <span id="score">0</span></div><div>BEST <span id="best">0</span></div></div></div><div id="progressTrack"><div id="progressFill"></div></div>
+<div id="touchHint" style="display:none;position:fixed;left:12px;bottom:22px;color:#fff;background:#10243acc;padding:8px 10px;border-radius:10px;font-size:11px;font-weight:800;pointer-events:none">TAP / JUMP • DOUBLE JUMP</div><button id="pause">Ⅱ PAUSE</button><button id="jump"><span>JUMP</span><small>⬆ TAP TO LEAP</small></button><div id="toast"></div><div id="comboPop"></div>
+<div class="screen" id="lobby"><div class="panel"><h1>🦖 DINO RUNNER ADVENTURE</h1><div class="sub">WORLDS EDITION • RUN • EXPLORE • UPGRADE</div><div class="stats"><div class="stat">🪙 <span id="wallet">0</span></div><div class="stat">🏆 BEST <span id="lobbyBest">0</span></div><div class="stat">⭐ LEVEL <span id="lobbyLevel">1</span></div></div>
+<div style="font-size:66px;margin:2px">🦖</div><b id="selectedName">Classic Rex</b><div class="sub" id="selectedMap">🌵 Desert Valley</div>
+<div class="actions"><button class="main" id="playOpen">▶ PLAY</button><button class="secondary" id="openShop">🛒 SHOP</button></div><div class="actions"><button class="secondary" id="missionsOpen">🎯 MISSIONS</button><button class="secondary" id="mapsOpen">🗺️ WORLDS</button></div><div class="sub">Bird flocks, village houses, new hazards, richer illustrated worlds and boss rounds!</div></div></div>
+<div class="screen" id="shopScreen" style="display:none"><div class="panel"><h1>🛒 DINO SHOP</h1><div class="stats"><div class="stat">🪙 <span id="shopWallet">0</span> COINS</div></div><div class="tabs" id="tabs"><button class="tab active" data-tab="skins">🦖 Skins</button><button class="tab" data-tab="upgrades">⚡ Upgrades</button><button class="tab" data-tab="auras">✨ Auras</button><button class="tab" data-tab="maps">🗺️ Maps</button></div><div id="shopContent"></div><button class="secondary" id="shopBack">← LOBBY</button></div></div>
+<div class="screen" id="difficultyScreen" style="display:none"><div class="panel"><h1>🎮 SELECT DIFFICULTY</h1><p class="sub">Choose your challenge.</p>
+<label class="diff"><input type="radio" name="difficulty" value="easy" checked><b>🟢 EASY</b><small>Gentler speed and wider obstacle gaps</small></label><label class="diff"><input type="radio" name="difficulty" value="normal"><b>🟡 NORMAL</b><small>Balanced challenge</small></label><label class="diff"><input type="radio" name="difficulty" value="hard"><b>🔴 HARD</b><small>Fast pace and tighter obstacle gaps, bigger coin rewards</small></label><div class="actions"><button class="secondary" id="diffBack">BACK</button><button class="main" id="startRun">START RUN 🚀</button></div></div></div>
+<div class="screen" id="missionScreen" style="display:none"><div class="panel"><h1>🎯 MISSIONS</h1><p class="sub">Complete missions during your runs to earn bonus coins.</p><div id="missionContent"></div><button class="secondary" id="missionBack">← LOBBY</button></div></div>
+<div class="screen" id="resultScreen" style="display:none"><div class="panel"><h1 id="resultTitle">🏁 RUN OVER</h1><p id="resultText"></p><div class="stats"><div class="stat">🪙 WALLET <span id="resultWallet"></span></div></div><div class="actions"><button class="main" id="retry">RUN AGAIN</button><button class="secondary" id="resultLobby">LOBBY</button></div></div></div>
+<div class="screen" id="pauseScreen" style="display:none"><div class="panel"><h1>⏸️ PAUSED</h1><p>Take a breather!</p><div class="actions"><button class="main" id="resume">RESUME</button><button class="secondary" id="quit">QUIT TO LOBBY</button></div></div></div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),$=id=>document.getElementById(id);
+let W=innerWidth,H=innerHeight,DPR=1,ground=H*.78;function resize(){W=innerWidth;H=innerHeight;DPR=Math.min(devicePixelRatio||1,2);canvas.width=W*DPR;canvas.height=H*DPR;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);ground=H*.78;if(!active)dino.y=ground-dino.h}addEventListener('resize',resize);
+const skins=[{id:'classic',name:'Classic Rex',cost:0,body:'#269b50',belly:'#b9e47d',spike:'#16783b',emoji:'🦖'},{id:'ember',name:'Ember Rex',cost:45,body:'#e66a36',belly:'#ffd18a',spike:'#a63c22',emoji:'🔥'},{id:'ice',name:'Ice Rex',cost:75,body:'#48b9df',belly:'#d5f7ff',spike:'#267da9',emoji:'❄️'},{id:'royal',name:'Royal Rex',cost:120,body:'#9a69d8',belly:'#e5cfff',spike:'#5a3694',emoji:'👑'},{id:'gold',name:'Golden Rex',cost:190,body:'#e5b72f',belly:'#fff0a5',spike:'#a87913',emoji:'✨'}];
+const maps=[{id:'desert',name:'Desert Valley',cost:0,emoji:'🌵',sky1:'#70cfff',sky2:'#effbff',ground:'#d9b66d',hill:'#a5d98d'},{id:'forest',name:'Ancient Forest',cost:100,emoji:'🌲',sky1:'#73c9ed',sky2:'#e4f6df',ground:'#9b754b',hill:'#527e58'},{id:'snow',name:'Frost Peaks',cost:140,emoji:'❄️',sky1:'#9bdcff',sky2:'#f6ffff',ground:'#e5f4ff',hill:'#b7d8e8'},{id:'coast',name:'Tidal Coast',cost:190,emoji:'🌊',sky1:'#5ac9ef',sky2:'#e7fbff',ground:'#dfc28a',hill:'#5b9c9b'},{id:'night',name:'Moonlit Woods',cost:230,emoji:'🌙',sky1:'#101c42',sky2:'#35456b',ground:'#55516a',hill:'#303d56'},{id:'volcano',name:'Lava Land',cost:280,emoji:'🌋',sky1:'#4d1e36',sky2:'#a94b38',ground:'#554047',hill:'#3b303c'}];
+const auras=[{id:'none',name:'No Aura',cost:0,emoji:'⚪',color:null},{id:'spark',name:'Spark Aura',cost:65,emoji:'⚡',color:'#fff06a'},{id:'flame',name:'Flame Aura',cost:110,emoji:'🔥',color:'#ff783d'},{id:'cosmic',name:'Cosmic Aura',cost:175,emoji:'💜',color:'#bd8cff'}];
+let saveData={};try{saveData=JSON.parse(localStorage.getItem('dinoWorldSave')||'{}')||{}}catch(e){saveData={}};let wallet=+saveData.wallet||0,ownedSkins=saveData.ownedSkins||['classic'],ownedMaps=saveData.ownedMaps||['desert'],ownedAuras=saveData.ownedAuras||['none'],selectedSkin=saveData.selectedSkin||'classic',selectedMap=saveData.selectedMap||'desert',selectedAura=saveData.selectedAura||'none',upgradeLevel=+saveData.upgradeLevel||0,best=+saveData.best||0,missionClaims=saveData.missionClaims||[];
+const upgradeCosts=[60,100,160,230];
+const missions=[{id:'coins25',name:'Pocket Money',desc:'Collect 25 coins in total',target:25,reward:25,kind:'lifetimeCoins'},{id:'jumps10',name:'High Jumper',desc:'Make 10 successful jumps',target:10,reward:30,kind:'jumps'},{id:'combo5',name:'Combo Starter',desc:'Reach a 5x combo',target:5,reward:35,kind:'combo'},{id:'score500',name:'Distance Runner',desc:'Score 500 in one run',target:500,reward:40,kind:'score'},{id:'boss1',name:'Boss Challenger',desc:'Defeat a boss encounter',target:1,reward:60,kind:'boss'}];
+let stats=saveData.stats||{lifetimeCoins:0,jumps:0,bosses:0};function persist(){localStorage.setItem('dinoWorldSave',JSON.stringify({wallet,ownedSkins,ownedMaps,ownedAuras,selectedSkin,selectedMap,selectedAura,upgradeLevel,best,missionClaims,stats}));refreshUI()}
+function refreshUI(){$('wallet').textContent=wallet;$('shopWallet').textContent=wallet;$('lobbyBest').textContent=best;$('best').textContent=best;$('selectedName').textContent=skins.find(s=>s.id===selectedSkin).name;let m=maps.find(m=>m.id===selectedMap);$('selectedMap').textContent=m.emoji+' '+m.name;$('lobbyLevel').textContent=1+Math.floor(best/500)}
+function toast(msg){let e=$('toast');e.textContent=msg;e.style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.style.display='none',1500)}
+function show(id){['lobby','shopScreen','difficultyScreen','missionScreen','resultScreen','pauseScreen'].forEach(k=>$(k).style.display=k===id?'flex':'none')}
+let shopTab='skins';function drawShop(tab=shopTab){shopTab=tab;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));let arr=tab==='skins'?skins:tab==='maps'?maps:tab==='auras'?auras:[];let html='';
+if(tab==='upgrades'){html=`<div class="grid"><div class="item"><div class="emoji">⚡</div><b>Runner Engine ${upgradeLevel}/4</b><small>Boost starting run speed and coin magnet range. Each upgrade costs more.</small><button data-action="upgrade">${upgradeLevel===4?'MAX LEVEL':upgradeCosts[upgradeLevel]+' 🪙 UPGRADE'}</button></div><div class="item"><div class="emoji">🧲</div><b>Coin Magnet</b><small>Automatically collect coins within a wider radius as you upgrade.</small><button disabled>UPGRADE BONUS</button></div></div>`}
+else html='<div class="grid">'+arr.map(o=>{let owned=(tab==='skins'?ownedSkins:tab==='maps'?ownedMaps:ownedAuras).includes(o.id),sel=(tab==='skins'?selectedSkin:tab==='maps'?selectedMap:selectedAura)===o.id;return `<div class="item"><div class="emoji">${o.emoji}</div><b>${o.name}</b><small>${tab==='maps'?'Unique scenery and themed obstacles':tab==='auras'?'Animated character trail effect':'Playable dinosaur skin'}</small><button data-action="${tab}:${o.id}" ${sel?'disabled':''}>${sel?'EQUIPPED':owned?'EQUIP':o.cost+' 🪙'}</button></div>`}).join('')+'</div>';
+$('shopContent').innerHTML=html;$('shopContent').querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>buy(b.dataset.action))}
+function buy(a){if(a==='upgrade'){if(upgradeLevel>=4)return toast('Max level!');let c=upgradeCosts[upgradeLevel];if(wallet<c)return toast('Not enough coins');wallet-=c;upgradeLevel++;persist();drawShop();return toast('Speed upgrade unlocked! ⚡')}
+let [type,id]=a.split(':'),list=type==='skins'?skins:type==='maps'?maps:auras,owned=type==='skins'?ownedSkins:type==='maps'?ownedMaps:ownedAuras,item=list.find(x=>x.id===id),key=type==='skins'?'selectedSkin':type==='maps'?'selectedMap':'selectedAura';if(owned.includes(id)){if(type==='skins')selectedSkin=id;else if(type==='maps')selectedMap=id;else selectedAura=id;persist();drawShop();return toast('Equipped '+item.name)}
+if(wallet<item.cost)return toast('Not enough coins!');wallet-=item.cost;owned.push(id);if(type==='skins')selectedSkin=id;else if(type==='maps')selectedMap=id;else selectedAura=id;persist();drawShop();toast('Unlocked '+item.name+'!')}
+$('openShop').onclick=()=>{drawShop();show('shopScreen')};$('shopBack').onclick=()=>show('lobby');$('tabs').onclick=e=>{let b=e.target.closest('[data-tab]');if(b)drawShop(b.dataset.tab)};$('mapsOpen').onclick=()=>{drawShop('maps');show('shopScreen')};$('playOpen').onclick=()=>show('difficultyScreen');$('diffBack').onclick=()=>show('lobby');
+function drawMissions(){let total=stats.lifetimeCoins; $('missionContent').innerHTML=missions.map(m=>{let val=m.kind==='lifetimeCoins'?total:m.kind==='jumps'?stats.jumps:m.kind==='boss'?stats.bosses:m.kind==='combo'?bestComboEver:best;let done=val>=m.target,claimed=missionClaims.includes(m.id);return `<div class="item" style="margin:7px 0;text-align:left"><b>${m.name}</b><small>${m.desc} • Progress ${Math.min(val,m.target)}/${m.target} • Reward 🪙 ${m.reward}</small><button data-mission="${m.id}" ${!done||claimed?'disabled':''}>${claimed?'CLAIMED':done?'CLAIM REWARD':'IN PROGRESS'}</button></div>`}).join('');$('missionContent').querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>{let m=missions.find(x=>x.id===b.dataset.mission);if(!missionClaims.includes(m.id)){missionClaims.push(m.id);wallet+=m.reward;persist();drawMissions();toast('Mission reward claimed!')}})}
+$('missionsOpen').onclick=()=>{drawMissions();show('missionScreen')};$('missionBack').onclick=()=>show('lobby');
+let bestComboEver=+saveData.bestComboEver||0;function persist(){localStorage.setItem('dinoWorldSave',JSON.stringify({wallet,ownedSkins,ownedMaps,ownedAuras,selectedSkin,selectedMap,selectedAura,upgradeLevel,best,missionClaims,stats,bestComboEver}));refreshUI()}
+refreshUI();
+const dino={x:Math.max(35,W*.13),y:0,w:61,h:66,vy:0,grounded:true,leg:0,jumps:0};let obstacles=[],coins=[],decor=[],clouds=[],powerups=[],particles=[],active=false,paused=false,score=0,speed=360,baseSpeed=320,spawn=0,coinSpawn=0,last=0,worldTime=0,runCoins=0,combo=0,comboTimer=0,difficulty='easy',level=1,boss=null,bossSpawn=0,bossDefeated=0,jumpsRun=0,shieldTime=0,screenShake=0;
+for(let i=0;i<8;i++)clouds.push({x:Math.random()*W,y:25+Math.random()*H*.32,s:.5+Math.random()*.8});
+function jump(){if(!active||paused)return;if(dino.grounded||dino.jumps<2){dino.vy=dino.jumps===0?-740:-650;dino.grounded=false;dino.jumps++;stats.jumps++;jumpsRun++;burst(dino.x+30,dino.y+55,'#fff1a8',7);persist()}}
+$('jump').addEventListener('pointerdown',e=>{e.preventDefault();jump()});canvas.addEventListener('pointerdown',()=>jump());addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();jump()}});
+$('startRun').onclick=()=>{difficulty=document.querySelector('input[name="difficulty"]:checked').value;startRun()};
+function startRun(){active=true;paused=false;score=0;runCoins=0;combo=0;comboTimer=0;level=1;boss=null;bossSpawn=850;bossDefeated=0;jumpsRun=0;obstacles=[];coins=[];decor=[];powerups=[];particles=[];shieldTime=0;screenShake=0;dino.jumps=0;$('shieldHud').textContent='OFF';dino.x=Math.max(35,W*.13);dino.y=ground-dino.h;dino.vy=0;dino.grounded=true;spawn=.7;coinSpawn=.5;let mul={easy:.78,normal:1,hard:1.25}[difficulty];baseSpeed=(310+upgradeLevel*30)*mul;speed=baseSpeed;$('hud').style.display='flex';$('progressTrack').style.display='block';$('progressFill').style.width='0%';$('jump').style.display='flex';$('pause').style.display='block';$('touchHint').style.display='block';$('runCoins').textContent='0';$('worldHud').textContent=maps.find(m=>m.id===selectedMap).emoji+' '+maps.find(m=>m.id===selectedMap).name;$('combo').textContent='0';$('score').textContent='0';$('level').textContent='1';show('lobby');$('lobby').style.display='none'}
+$('pause').onclick=()=>{if(active){paused=true;show('pauseScreen')}};$('resume').onclick=()=>{paused=false;show('lobby');$('lobby').style.display='none'};$('quit').onclick=()=>{active=false;$('hud').style.display='none';$('progressTrack').style.display='none';$('jump').style.display='none';$('pause').style.display='none';$('touchHint').style.display='none';show('lobby')};
+$('retry').onclick=()=>show('difficultyScreen');$('resultLobby').onclick=()=>show('lobby');
+function finish(title='🏁 RUN OVER'){active=false;best=Math.max(best,Math.floor(score));persist();$('hud').style.display='none';$('progressTrack').style.display='none';$('jump').style.display='none';$('pause').style.display='none';$('touchHint').style.display='none';$('resultTitle').textContent=title;$('resultText').innerHTML=`Score: <b>${Math.floor(score)}</b><br>Coins this run: <b>${runCoins}</b><br>Best combo: <b>${bestComboEver}x</b><br>World level reached: <b>${level}</b>`;$('resultWallet').textContent=wallet;show('resultScreen')}
+function addCoins(n){wallet+=n;runCoins+=n;stats.lifetimeCoins+=n;persist();$('runCoins').textContent=runCoins}
+function comboReward(){combo++;comboTimer=2.4;bestComboEver=Math.max(bestComboEver,combo);$('combo').textContent=combo;if(combo>=5&&combo%5===0){let reward=5+Math.floor(combo/5)*2;addCoins(reward);let p=$('comboPop');p.textContent=`${combo}x COMBO! +${reward} 🪙`;p.classList.remove('show');void p.offsetWidth;p.classList.add('show')}}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
+function burst(x,y,color,n){for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,v=45+Math.random()*190;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-30,life:.35+Math.random()*.45,max:.8,color,size:2+Math.random()*3})}}
+function drawDino(){let s=skins.find(v=>v.id===selectedSkin)||skins[0],x=dino.x,y=dino.y;ctx.save();ctx.globalAlpha=.24;ctx.fillStyle='#071725';ctx.beginPath();ctx.ellipse(x+31,ground+3,29,6,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;ctx.translate(x,y);ctx.scale(1.08,1.08);if(selectedAura!=='none'){let a=auras.find(v=>v.id===selectedAura);ctx.globalAlpha=.22+.12*Math.sin(worldTime*12);ctx.fillStyle=a.color;ctx.beginPath();ctx.ellipse(29,35,45,43,0,0,7);ctx.fill();ctx.globalAlpha=1}
+ctx.fillStyle=s.body;ctx.beginPath();ctx.moveTo(14,39);ctx.lineTo(-7,47);ctx.lineTo(13,53);ctx.closePath();ctx.fill();roundRect(8,22,39,31,10);roundRect(32,8,18,29,8);roundRect(36,2,28,23,9);ctx.fillStyle=s.belly;roundRect(17,40,27,10,5);ctx.fillStyle=s.spike;for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(12+i*7,24);ctx.lineTo(16+i*7,11+(i%2)*3);ctx.lineTo(21+i*7,24);ctx.fill()}
+ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(55,10,4.8,0,7);ctx.fill();ctx.fillStyle='#17212b';ctx.beginPath();ctx.arc(56,10,2.3,0,7);ctx.fill();ctx.strokeStyle='#173d2b';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(52,25);ctx.quadraticCurveTo(58,29,63,24);ctx.stroke();ctx.fillStyle=s.body;roundRect(39,33,12,7,3);let sw=dino.grounded?Math.sin(dino.leg)*5:0;ctx.fillStyle=s.spike;roundRect(15,49,12,15+sw,4);roundRect(35,49,12,15-sw,4);ctx.restore()}
+function drawCoin(c){let bob=Math.sin(worldTime*6+c.phase)*4;ctx.save();ctx.translate(c.x,c.y+bob);ctx.fillStyle='#e9a900';ctx.beginPath();ctx.ellipse(0,0,10,13,0,0,7);ctx.fill();ctx.strokeStyle='#fff18b';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#fff4b0';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',0,1);ctx.restore()}
+function drawCactus(o){ctx.fillStyle='#247c43';roundRect(o.x+10,ground-o.h,15,o.h,5);roundRect(o.x,ground-o.h*.6,11,23,5);roundRect(o.x+7,ground-o.h*.6,12,8,3);roundRect(o.x+24,ground-o.h*.45,11,23,5);roundRect(o.x+20,ground-o.h*.45,13,8,3)}
+function drawBoat(o){let x=o.x,y=ground;ctx.fillStyle='#70452c';ctx.beginPath();ctx.moveTo(x,y-15);ctx.lineTo(x+70,y-15);ctx.lineTo(x+58,y);ctx.lineTo(x+13,y);ctx.closePath();ctx.fill();ctx.fillStyle='#b87943';ctx.fillRect(x+25,y-35,24,20);ctx.fillStyle='#fff0c8';ctx.beginPath();ctx.moveTo(x+30,y-37);ctx.lineTo(x+30,y-70);ctx.lineTo(x+55,y-37);ctx.fill();ctx.strokeStyle='#e9faff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-7,y+5);ctx.quadraticCurveTo(x+12,y-2,x+27,y+5);ctx.quadraticCurveTo(x+44,y+12,x+64,y+5);ctx.stroke()}
+function drawObstacle(o){
+if(o.type==='bird'){
+ let by=o.y;
+ ctx.save();ctx.translate(o.x,by);ctx.fillStyle='#563b4b';ctx.beginPath();ctx.ellipse(0,0,20,10,0,0,7);ctx.fill();
+ ctx.beginPath();ctx.moveTo(-7,-3);ctx.quadraticCurveTo(-22,-27,-31,-18);ctx.quadraticCurveTo(-22,-5,-7,3);ctx.fill();
+ ctx.beginPath();ctx.moveTo(8,-3);ctx.quadraticCurveTo(22,-27,31,-18);ctx.quadraticCurveTo(22,-5,8,3);ctx.fill();
+ ctx.fillStyle='#f5d36b';ctx.beginPath();ctx.arc(12,-2,2.5,0,7);ctx.fill();ctx.restore();return;
+}
+if(o.type==='thorn'){
+ ctx.fillStyle='#315b36';ctx.beginPath();ctx.moveTo(o.x,ground);ctx.lineTo(o.x+10,ground-25);ctx.lineTo(o.x+19,ground-5);ctx.lineTo(o.x+31,ground-31);ctx.lineTo(o.x+42,ground);ctx.fill();
+ ctx.strokeStyle='#c5d77b';ctx.lineWidth=2;for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(o.x+5+i*8,ground-5);ctx.lineTo(o.x+2+i*8,ground-16);ctx.stroke()}return;
+}
+if(o.type==='bone'){
+ ctx.strokeStyle='#eee1bd';ctx.lineWidth=8;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(o.x+8,ground-8);ctx.lineTo(o.x+47,ground-28);ctx.stroke();
+ ctx.fillStyle='#f7edcf';for(let q of [[o.x+5,ground-9],[o.x+11,ground-1],[o.x+44,ground-32],[o.x+50,ground-24]]){ctx.beginPath();ctx.arc(q[0],q[1],6,0,7);ctx.fill()}return;
+}
+if(o.type==='mushroom'){
+ ctx.fillStyle='#a33e47';ctx.beginPath();ctx.ellipse(o.x+24,ground-25,24,15,0,Math.PI,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#fff0d0';for(let k=0;k<4;k++){ctx.beginPath();ctx.arc(o.x+10+k*9,ground-35-(k%2)*3,3,0,7);ctx.fill()}
+ ctx.fillStyle='#ead9b2';roundRect(o.x+17,ground-26,14,26,5);return;
+}else if(o.type==='boulder'){
+ ctx.fillStyle='#5b6265';ctx.beginPath();ctx.arc(o.x+24,ground-23,23,0,7);ctx.fill();
+ ctx.strokeStyle='#aab2b1';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.x+12,ground-31);ctx.lineTo(o.x+25,ground-39);ctx.lineTo(o.x+34,ground-25);ctx.stroke();return;
+}else if(o.type==='icicle'){
+ ctx.fillStyle='#c9f4ff';ctx.beginPath();ctx.moveTo(o.x+8,ground-42);ctx.lineTo(o.x+20,ground-4);ctx.lineTo(o.x+31,ground-42);ctx.fill();
+ ctx.fillStyle='#ffffffaa';ctx.fillRect(o.x+18,ground-35,3,19);return;
+}else if(o.type==='cactus')drawCactus(o);else if(o.type==='rock'){ctx.fillStyle='#727b80';ctx.beginPath();ctx.moveTo(o.x,ground);ctx.lineTo(o.x+7,ground-27);ctx.lineTo(o.x+23,ground-39);ctx.lineTo(o.x+39,ground-21);ctx.lineTo(o.x+45,ground);ctx.fill()}else if(o.type==='log'){ctx.fillStyle='#79502e';roundRect(o.x,ground-25,58,24,10);ctx.strokeStyle='#bd8950';ctx.strokeRect(o.x+8,ground-22,4,17)}else if(o.type==='snowrock'){ctx.fillStyle='#cde8f5';ctx.beginPath();ctx.moveTo(o.x,ground);ctx.lineTo(o.x+8,ground-32);ctx.lineTo(o.x+30,ground-42);ctx.lineTo(o.x+49,ground-15);ctx.lineTo(o.x+53,ground);ctx.fill()}else if(o.type==='boat')drawBoat(o);else if(o.type==='steam'){ctx.fillStyle='#5a5155';ctx.fillRect(o.x+8,ground-30,26,30);ctx.fillStyle='#e1a36c';ctx.beginPath();ctx.arc(o.x+21,ground-35,16,Math.PI,0);ctx.fill()}else if(o.type==='stump'){ctx.fillStyle='#754a2c';roundRect(o.x,ground-32,34,32,5);ctx.fillStyle='#c38b54';ctx.beginPath();ctx.ellipse(o.x+17,ground-32,17,5,0,0,7);ctx.fill()}}
+
+function drawHouse(x,y,scale=1,night=false){
+  ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);
+  ctx.fillStyle='#6b4937';ctx.fillRect(-25,-37,50,38);
+  ctx.fillStyle='#e9b979';ctx.fillRect(-21,-32,42,32);
+  ctx.fillStyle='#9b4935';ctx.beginPath();ctx.moveTo(-31,-36);ctx.lineTo(0,-62);ctx.lineTo(31,-36);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#59382f';ctx.fillRect(-7,-20,14,20);
+  ctx.fillStyle=night?'#ffe18a':'#8bd2e6';ctx.fillRect(-17,-27,9,10);ctx.fillRect(8,-27,9,10);
+  ctx.strokeStyle='#fff4d5';ctx.lineWidth=2;ctx.strokeRect(-17,-27,9,10);ctx.strokeRect(8,-27,9,10);
+  ctx.fillStyle='#72513a';ctx.fillRect(18,-55,6,18);
+  ctx.restore();
+}
+function drawBird(x,y,scale=1,phase=0,color='#33465b'){
+  let flap=Math.sin(worldTime*8+phase)*5;
+  ctx.save();ctx.translate(x,y);ctx.scale(scale,scale);ctx.strokeStyle=color;ctx.lineWidth=2.8;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(-13,0);ctx.quadraticCurveTo(-7,-flap-7,0,0);ctx.quadraticCurveTo(7,-flap-7,13,0);ctx.stroke();ctx.restore();
+}
+function drawFlock(){
+  for(let i=0;i<5;i++){
+    let x=((i*93+worldTime*17)%(W+130))-45;
+    let y=H*.17+Math.sin(worldTime*1.4+i*2)*13+(i%2)*22;
+    drawBird(x,y,.7+(i%3)*.12,i*.8,selectedMap==='night'?'#e4e8ff':'#526477');
+  }
+}
+function drawVillage(){
+  let shift=(worldTime*(active?speed*.035:9))%W;
+  let night=selectedMap==='night';
+  for(let i=0;i<4;i++){
+    let x=i*210-shift+40;
+    drawHouse(x,ground-108,0.72+(i%2)*.12,night);
+    // small fenced gardens and shrubs around the cottages
+    ctx.fillStyle='#70513b';ctx.fillRect(x-48,ground-76,5,20);ctx.fillRect(x+48,ground-76,5,20);
+    ctx.fillRect(x-48,ground-67,96,3);
+    ctx.fillStyle=selectedMap==='snow'?'#eaf8ff':'#39734b';
+    for(let j=0;j<3;j++){ctx.beginPath();ctx.arc(x-55+j*13,ground-79,9,0,Math.PI*2);ctx.fill()}
+  }
+}
+function drawForegroundDetails(){
+  let drift=(worldTime*(active?speed*.35:18))%72;
+  for(let x=-drift;x<W+80;x+=72){
+    ctx.fillStyle=selectedMap==='snow'?'#9bc7d8':selectedMap==='volcano'?'#8e4c37':'#3c7545';
+    ctx.beginPath();ctx.moveTo(x,ground+2);ctx.lineTo(x+8,ground-13-(x%3)*2);ctx.lineTo(x+15,ground+2);ctx.fill();
+    ctx.fillStyle=selectedMap==='snow'?'#d8f4ff':'#d9a44d';
+    ctx.beginPath();ctx.arc(x+35,ground+18,2.5,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawTree(x,y,scale=1){ctx.fillStyle='#65462f';ctx.fillRect(x-5*scale,y-42*scale,10*scale,42*scale);ctx.fillStyle='#276844';for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(x,y-(85-i*18)*scale);ctx.lineTo(x-28*scale,y-(35-i*12)*scale);ctx.lineTo(x+28*scale,y-(35-i*12)*scale);ctx.fill()}}
+function drawMountains(){
+ let m=maps.find(v=>v.id===selectedMap)||maps[0];
+ // distant misty mountain layers with parallax
+ for(let layer=0;layer<3;layer++){
+  let par=[.10,.18,.28][layer],base=ground-[105,78,45][layer];
+  ctx.fillStyle=layer===0?m.hill:layer===1?shade(m.hill,-18):shade(m.hill,-34);
+  ctx.beginPath();ctx.moveTo(0,ground);
+  for(let x=-80;x<=W+120;x+=48){
+   let xx=x-((worldTime*speed*par)%96);
+   let peak=base-Math.abs(Math.sin((x+layer*31)*.009))*[100,78,50][layer];
+   ctx.lineTo(xx,peak);ctx.quadraticCurveTo(xx+22,peak-18,xx+48,base+18);
+  }
+  ctx.lineTo(W,ground);ctx.closePath();ctx.fill();
+ }
+ // mountain highlights, snow caps and cliff creases
+ for(let x=-30;x<W+80;x+=145){
+  let xx=x-((worldTime*speed*.12)%145),yy=ground-145-(Math.sin(x*.012)*24);
+  ctx.fillStyle=selectedMap==='snow'?'#f5ffffaa':'#ffffff30';
+  ctx.beginPath();ctx.moveTo(xx+34,yy+24);ctx.lineTo(xx+55,yy-10);ctx.lineTo(xx+76,yy+25);ctx.closePath();ctx.fill();
+  if(selectedMap==='snow'){ctx.strokeStyle='#b9e8f7';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(xx+52,yy+35);ctx.lineTo(xx+44,yy+65);ctx.lineTo(xx+57,yy+82);ctx.stroke()}
+ }
+}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function shade(hex,amt){let c=hex.replace('#','');if(c.length!==6)return hex;let n=parseInt(c,16),r=clamp(((n>>16)&255)+amt,0,255),g=clamp(((n>>8)&255)+amt,0,255),b=clamp((n&255)+amt,0,255);return `rgb(${r},${g},${b})`}
+function drawJungleCanopy(){
+ if(!['forest','night'].includes(selectedMap))return;
+ let drift=(worldTime*speed*.16)%190;
+ for(let i=0;i<7;i++){
+  let x=i*190-drift-20;
+  // thick tree trunk
+  ctx.fillStyle='#493b2d';ctx.fillRect(x+40,ground-230,17,235);
+  ctx.strokeStyle='#6e573b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(x+48,ground-160);ctx.lineTo(x+15,ground-205);ctx.moveTo(x+48,ground-180);ctx.lineTo(x+92,ground-225);ctx.stroke();
+  // layered leaf clusters
+  for(let j=0;j<6;j++){
+   let lx=x+((j%3)*35)-5,ly=ground-222-Math.floor(j/3)*28;
+   ctx.fillStyle=['#174c38','#236b48','#328252','#17432f'][j%4];
+   ctx.beginPath();ctx.ellipse(lx,ly,38,18,-.35+(j%2)*.5,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='#6ca66a55';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(lx-18,ly);ctx.quadraticCurveTo(lx,ly-10,lx+20,ly-2);ctx.stroke();
+  }
+ }
+}
+function drawGroundTexture(){
+ let drift=(worldTime*speed*.32)%42;
+ for(let x=-drift;x<W+50;x+=42){
+  ctx.fillStyle=selectedMap==='snow'?'#a9d8e8':selectedMap==='volcano'?'#392b30':'#5a432f';
+  ctx.globalAlpha=.28;ctx.beginPath();ctx.ellipse(x+12,ground+19+(x%4)*3,9,3,.2,0,7);ctx.fill();ctx.globalAlpha=1;
+  if(selectedMap==='forest'||selectedMap==='night'){
+   ctx.strokeStyle='#2d6c42';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+28,ground+4);ctx.lineTo(x+25,ground-8);ctx.moveTo(x+28,ground+4);ctx.lineTo(x+36,ground-6);ctx.stroke();
+  }
+ }
+}
+function frame(t){requestAnimationFrame(frame);let dt=Math.min((t-last)/1000||0,.035);last=t;worldTime+=dt;let map=maps.find(m=>m.id===selectedMap)||maps[0],day=(Math.sin(worldTime*.09)+1)/2;
+let sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,map.id==='desert'?mix([13,25,59],[105,211,255],day):map.sky1);sky.addColorStop(1,map.id==='desert'?mix([56,70,112],[235,250,255],day):map.sky2);ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ctx.fillStyle=map.id==='desert'?(day>.43?'#ffe27a':'#f1f5ff'):'#fff0a6';ctx.beginPath();ctx.arc(W*(.14+day*.72),H*.2,27,0,7);ctx.fill();if(map.id==='night'||(map.id==='desert'&&day<.25)){ctx.fillStyle='#fff';for(let i=0;i<38;i++)ctx.fillRect(i*137%W,i*71%(H*.55),2,2)}
+clouds.forEach(c=>{c.x-=active&&!paused?speed*.07*dt:7*dt;if(c.x<-90)c.x=W+90;ctx.fillStyle=map.id==='night'?'#aebbd899':'#ffffffb9';ctx.beginPath();ctx.arc(c.x,c.y,17*c.s,0,7);ctx.arc(c.x+22*c.s,c.y-8*c.s,22*c.s,0,7);ctx.arc(c.x+47*c.s,c.y,16*c.s,0,7);ctx.fill()});
+drawMountains();
+drawJungleCanopy();
+if(map.id==='forest'){drawVillage();}
+drawFlock();
+// Water bay sections appear in the coastal map only; the boat is a jumpable hazard.
+if(map.id==='coast'){let section=((worldTime*speed*.10)%1500);if(section>420&&section<1030){ctx.fillStyle='#319fc1';ctx.fillRect(0,ground-8,W,12);for(let x=0;x<W;x+=55){ctx.strokeStyle='#a9efff99';ctx.beginPath();ctx.moveTo(x,ground-4);ctx.quadraticCurveTo(x+13,ground-10,x+28,ground-4);ctx.stroke()}}}
+ctx.fillStyle=map.ground;ctx.fillRect(0,ground,W,H-ground);ctx.strokeStyle='#816b4c';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,ground);ctx.lineTo(W,ground);ctx.stroke();
+ctx.save();ctx.globalAlpha=.22;for(let gx=0;gx<W;gx+=34){let drift=(worldTime*speed*.18)%34;ctx.fillStyle=map.id==='snow'?'#8fb7ca':'#4b453a';ctx.fillRect(gx-drift,ground+12+(gx%3)*5,12,2)}ctx.restore();
+// Map-specific decorative silhouettes and surface details
+if(map.id==='forest'||map.id==='night'){for(let x=30;x<W+80;x+=115){let shift=(worldTime*speed*.12)%115;drawTree(x-shift,ground,0.75+((x/115|0)%3)*.12)}}
+if(map.id==='snow'){ctx.fillStyle='#fff';for(let x=15;x<W;x+=80){ctx.beginPath();ctx.arc(x,ground+22,2,0,7);ctx.fill()}}
+if(map.id==='volcano'){ctx.fillStyle='#ff8a39';for(let x=20;x<W;x+=110){ctx.beginPath();ctx.arc(x,ground+30,3+Math.sin(worldTime+x)*1.5,0,7);ctx.fill()}}
+drawForegroundDetails();drawGroundTexture();
+if(active&&!paused){
+ score+=dt*10;level=1+Math.floor(score/350);$('progressFill').style.width=((score%350)/350*100)+'%';$('level').textContent=level;$('lobbyLevel').textContent=level;speed=Math.min(baseSpeed+250,baseSpeed+score*1.45);dino.vy+=1900*dt;dino.y+=dino.vy*dt;if(dino.y>=ground-dino.h){dino.y=ground-dino.h;dino.vy=0;dino.grounded=true;dino.jumps=0}dino.leg+=dt*14;if(shieldTime>0){shieldTime-=dt;$('shieldHud').textContent=shieldTime.toFixed(0)+'s';if(shieldTime<=0)$('shieldHud').textContent='OFF'}
+ if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0){combo=0;$('combo').textContent='0'}}
+ // New obstacle variety for each biome
+ spawn-=dt;if(spawn<=0){let types=map.id==='forest'?['stump','log','rock','thorn','bird','mushroom','boulder']:map.id==='snow'?['snowrock','snowrock','rock','bone','bird','icicle']:map.id==='coast'?['boat','cactus','rock','bird','boulder']:map.id==='volcano'?['steam','rock','cactus','bone','mushroom']:map.id==='night'?['stump','rock','log','thorn','bird','icicle']:['cactus','cactus','rock','thorn','bone','mushroom','boulder'];let type=types[Math.floor(Math.random()*types.length)];let flyY=ground-(105+Math.random()*48);obstacles.push({x:W+25,type,y:flyY,h:type==='cactus'?38+Math.random()*22:42,w:type==='boat'?72:type==='bird'?62:52,passed:false,phase:Math.random()*6});spawn=Math.max(.75,1.28-score/1000)+Math.random()*.45}
+ coinSpawn-=dt;if(coinSpawn<=0){let n=3+Math.floor(Math.random()*3);for(let i=0;i<n;i++)coins.push({x:W+30+i*34,y:ground-(85+Math.random()*45),phase:i*.7});coinSpawn=1.7+Math.random()*1.3;if(Math.random()<.22)powerups.push({x:W+50,y:ground-105,phase:Math.random()*6})}
+ obstacles.forEach(o=>{o.x-=speed*dt;if(o.type==='bird')o.y+=Math.sin(worldTime*5+o.phase)*22*dt;});coins.forEach(c=>c.x-=speed*dt);obstacles=obstacles.filter(o=>o.x+(o.w||52)>-30);
+ let px=dino.x+10,py=dino.y+8,pw=dino.w-15,ph=dino.h-10;
+ for(let o of obstacles){let ow=o.type==='boat'?64:o.type==='bird'?48:42,oh=o.type==='boat'?64:o.type==='bird'?24:o.type==='rock'||o.type==='snowrock'?37:o.type==='steam'?47:o.type==='log'?25:o.type==='bone'?26:o.type==='icicle'?48:o.type==='mushroom'?34:o.type==='boulder'?45:39;let ox=o.x+4,oy=o.type==='bird'?o.y-12:ground-oh;if(!o.passed&&o.x+ow<dino.x){o.passed=true;combo++;comboTimer=2.5;bestComboEver=Math.max(bestComboEver,combo);$('combo').textContent=combo;if(combo%5===0){let reward=5+Math.floor(combo/5)*2;addCoins(reward);let p=$('comboPop');p.textContent=`${combo}x COMBO! +${reward} 🪙`;p.classList.remove('show');void p.offsetWidth;p.classList.add('show')}}if(px<ox+ow&&px+pw>ox&&py<oy+oh&&py+ph>oy){if(shieldTime>0){shieldTime=0;$('shieldHud').textContent='OFF';o.x=-999;screenShake=10;burst(dino.x+30,dino.y+30,'#8deaff',22);toast('🛡️ SHIELD SAVED YOU!')}else{screenShake=14;burst(dino.x+30,dino.y+30,'#ffb34f',18);finish();break}}}
+ for(let i=coins.length-1;i>=0;i--){let c=coins[i],mag=upgradeLevel*5+6;if(Math.abs(dino.x+32-c.x)<23+mag&&Math.abs(dino.y+31-(c.y+Math.sin(worldTime*6+c.phase)*4))<34+mag){addCoins(1);coins.splice(i,1)}else if(c.x<-20)coins.splice(i,1)}
+ for(let i=powerups.length-1;i>=0;i--){let p=powerups[i];p.x-=speed*dt;p.y=ground-105+Math.sin(worldTime*4+p.phase)*8;if(Math.abs(dino.x+30-p.x)<34&&Math.abs(dino.y+30-p.y)<55){shieldTime=7;$('shieldHud').textContent='7s';burst(p.x,p.y,'#75eaff',18);toast('🛡️ SHIELD ACTIVE!');powerups.splice(i,1)}else if(p.x<-30)powerups.splice(i,1)}
+ if(!boss&&score>=bossSpawn){boss={x:W+30,hp:3,flash:0};bossSpawn+=1200;toast('⚠️ BOSS CHALLENGE! Jump over the rolling boulder!')}
+ if(boss){boss.x-=speed*.72*dt;ctx.save();ctx.translate(boss.x,ground-28);ctx.rotate(worldTime*3);
+ctx.fillStyle='#65554a';ctx.beginPath();ctx.arc(0,0,29,0,7);ctx.fill();
+ctx.strokeStyle='#b8a08b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-18,-8);ctx.lineTo(-5,-20);ctx.lineTo(7,-5);ctx.lineTo(19,-15);ctx.stroke();
+ctx.strokeStyle='#3e3835';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-16,13);ctx.lineTo(-4,3);ctx.lineTo(9,15);ctx.stroke();ctx.restore();if(boss.x<dino.x+45&&boss.x>dino.x-20&&dino.y>ground-55){finish('💥 BOSS HIT!');}else if(boss.x<-40){boss=null;bossDefeated++;stats.bosses++;addCoins(20);toast('BOSS CLEARED! +20 🪙');persist()}}
+ $('score').textContent=Math.floor(score);
+}
+obstacles.forEach(drawObstacle);coins.forEach(drawCoin);
+powerups.forEach(p=>{ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='#59d9ff';ctx.shadowColor='#8beaff';ctx.shadowBlur=18;ctx.beginPath();ctx.arc(0,0,15,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.font='bold 18px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('S',0,1);ctx.restore()});
+particles=particles.filter(p=>p.life>0);particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=350*dt;p.life-=dt;ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1});
+drawDino();if(shieldTime>0){ctx.strokeStyle='#75eaff';ctx.lineWidth=4;ctx.globalAlpha=.55+.3*Math.sin(worldTime*12);ctx.beginPath();ctx.ellipse(dino.x+30,dino.y+33,43,43,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
+}
+function mix(a,b,t){let c=a.map((v,i)=>Math.round(v+(b[i]-v)*t));return `rgb(${c[0]},${c[1]},${c[2]})`}
+resize();requestAnimationFrame(frame);
+</script></body></html>
